@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+@theme {
+    /* Obsidian / Zinc Palette - Minimalist & Sober */
+    --color-obsidian-50: #fafafa;
+    --color-obsidian-100: #f4f4f5;
+    --color-obsidian-200: #e4e4e7;
+    --color-obsidian-300: #d4d4d8;
+    --color-obsidian-400: #a1a1aa;
+    --color-obsidian-500: #71717a;
+    --color-obsidian-600: #52525b;
+    --color-obsidian-700: #3f3f46;
+    --color-obsidian-800: #27272a;
+    --color-obsidian-900: #18181b;
+    --color-obsidian-950: #09090b;
+    /* Main background */
+
+    /* Accent - Monochrome / Silver */
+    --color-primary-50: #f8fafc;
+    --color-primary-100: #f1f5f9;
+    --color-primary-500: #cbd5e1;
+    --color-primary-600: #94a3b8;
+    --color-primary-900: #0f172a;
+
+    --font-grotesk: "Space Grotesk", sans-serif;
+
+    --animate-fade-in: fade-in 0.5s ease-out;
+    --animate-slide-up: slide-up 0.5s ease-out;
+
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slide-up {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
+@layer base {
+    body {
+        @apply bg-obsidian-950 text-obsidian-200 font-grotesk antialiased text-base leading-relaxed tracking-wide;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-grotesk font-semibold tracking-tight text-white;
+    }
+
+    /* Custom Selection */
+    ::selection {
+        @apply bg-obsidian-200/20 text-white;
+    }
+
+    /* Scrollbar Minimalist */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        @apply bg-obsidian-800 rounded-full transition-colors;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        @apply bg-obsidian-700;
+    }
+}
+
+@layer components {
+
+    /* Panels & Cards */
+    .glass-panel {
+        @apply bg-obsidian-900/60 backdrop-blur-md border border-obsidian-800/60 shadow-lg;
+    }
+
+    .card-minimal {
+        @apply bg-obsidian-900 border border-obsidian-800 rounded-xl p-6 transition-all duration-300 hover:border-obsidian-700 hover:bg-obsidian-900/80;
+    }
+
+    /* Inputs */
+    .input-minimal {
+        @apply w-full bg-obsidian-900/50 border border-obsidian-800 rounded-lg px-4 py-3 text-obsidian-100 placeholder-obsidian-600 focus:outline-none focus:border-obsidian-600 focus:ring-1 focus:ring-obsidian-600 transition-all duration-200 font-grotesk;
+    }
+
+    /* Buttons */
+    .btn-primary {
+        @apply bg-obsidian-100 text-obsidian-950 font-semibold py-2.5 px-6 rounded-lg hover:bg-white hover:shadow-lg hover:shadow-white/5 transition-all duration-300 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+
+    .btn-secondary {
+        @apply bg-transparent border border-obsidian-700 text-obsidian-300 font-medium py-2.5 px-6 rounded-lg hover:bg-obsidian-900 hover:text-white hover:border-obsidian-600 transition-all duration-300;
+    }
+
+    .btn-ghost {
+        @apply text-obsidian-400 hover:text-white hover:bg-obsidian-800/50 py-2 px-4 rounded-lg transition-all active:scale-95;
+    }
+
+    /* Navigation */
+    .nav-item {
+        @apply flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-obsidian-400 hover:text-white hover:bg-obsidian-900 transition-all duration-200 border border-transparent;
+    }
+
+    .nav-item.active {
+        @apply bg-obsidian-900 text-white border-obsidian-800;
+    }
+
+    .text-gradient {
+        @apply text-white;
+        /* Removed gradient for sobriety unless requested otherwise */
+    }
+}
