@@ -74,11 +74,8 @@ psql -U postgres
 CREATE DATABASE boveda_prompts;
 \q
 
-# Ejecutar schema inicial
-psql -U postgres -d boveda_prompts -f base-datos/migraciones/001_schema_inicial.sql
-
-# Ejecutar migración de papelera
-psql -U postgres -d boveda_prompts -f base-datos/migraciones/002_agregar_papelera.sql
+# Ejecutar schema completo
+psql -U postgres -d boveda_prompts -f base-datos/schema.sql
 ```
 
 **O usa el script automatizado:**
@@ -181,6 +178,30 @@ boveda-prompts/
 │   │   │   └── prompts/      # Componentes de prompts
 │   │   ├── contexto/         # Context API
 │   │   ├── paginas/          # Páginas
+│   │   ├── servicios/        # Servicios API
+│   │   └── hooks/            # Custom hooks
+│   ├── tailwind.config.js    # Configuración Tailwind
+│   └── package.json
+│
+├── servidor/                  # Backend (Node.js/Express)
+│   ├── src/
+│   │   ├── config/           # Configuración
+│   │   ├── controladores/    # Controladores
+│   │   ├── middleware/       # Middleware
+│   │   ├── rutas/            # Rutas API
+│   │   └── servicios/        # Servicios
+│   ├── migrar.js             # Script de migración
+│   ├── verificar.js          # Script de verificación
+│   └── package.json
+│
+├── base-datos/               # Scripts SQL
+│   └── schema.sql           # Schema completo de la BD
+│
+├── INICIO_RAPIDO.md          # Guía de inicio rápido
+├── ACTUALIZACION.md          # Guía de actualización
+├── MEJORAS_IMPLEMENTADAS.md  # Lista de mejoras
+└── CHECKLIST.md              # Checklist de verificación
+```
 │   │   └── servicios/        # Servicios API
 │   ├── tailwind.config.js    # Configuración Tailwind
 │   └── package.json

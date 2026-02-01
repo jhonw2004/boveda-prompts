@@ -283,6 +283,7 @@ const Prompts = () => {
                         <PromptDatabase
                             prompts={prompts}
                             onSelect={handleSelect}
+                            onPromptsChange={() => cargarPrompts()}
                         />
                     ) : (
                         <PromptEditor

@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
 import {
     Table, LayoutGrid, List, MoreHorizontal,
-    Search, Filter, ChevronDown, Database, Star
+    Search, Filter, ChevronDown, Database, Star, Copy, Trash2
 } from 'lucide-react';
+import MenuDropdown from '../comunes/MenuDropdown';
+import ModalConfirmacion from '../comunes/ModalConfirmacion';
+import { useConfirmacion } from '../../hooks/useConfirmacion';
+import { promptsServicio } from '../../servicios/promptsServicio';
+import toast from 'react-hot-toast';
 
-const PromptDatabase = ({ prompts, onSelect }) => {
-    const [view, setView] = useState('list'); // list, table, gallery
+const PromptDatabase = ({ prompts, onSelect, onPromptsChange }) => {
+    const [view, setView] = useState('gallery'); // list, table, gallery
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
     const [filterTag, setFilterTag] = useState('');
     const [showFilters, setShowFilters] = useState(false);
+    const confirmacion = useConfirmacion();
 
     // Extract unique categories and tags for filter options
     const categories = [...new Set(prompts.map(p => p.categoria).filter(Boolean))];
@@ -30,6 +36,45 @@ const PromptDatabase = ({ prompts, onSelect }) => {
             month: 'short', day: 'numeric', year: 'numeric'
         });
     };
+
+    const handleCopyContent = (e, prompt) => {
+        e.stopPropagation();
+        if (prompt.contenido) {
+            navigator.clipboard.writeText(prompt.contenido);
+            toast.success('Contenido copiado al portapapeles');
+        }
+    };
+
+    const handleDelete = async (e, prompt) => {
+        e.stopPropagation();
+        await confirmacion.mostrar({
+            titulo: 'Mover a la papelera',
+            mensaje: `¿Mover "${prompt.titulo || 'Sin título'}" a la papelera? Podrás recuperarlo más tarde.`,
+            tipo: 'warning',
+            textoConfirmar: 'Mover a papelera',
+            textoCancelar: 'Cancelar',
+            onConfirmar: async () => {
+                await promptsServicio.eliminarPrompt(prompt.id, false);
+                toast.success('Movido a la papelera');
+                if (onPromptsChange) onPromptsChange();
+            }
+        });
+    };
+
+    const getMenuOpciones = (prompt) => [
+        {
+            label: 'Copiar contenido',
+            icono: <Copy size={14} />,
+            onClick: (e) => handleCopyContent(e, prompt),
+            shortcut: '⌘C'
+        },
+        {
+            label: 'Mover a papelera',
+            icono: <Trash2 size={14} />,
+            onClick: (e) => handleDelete(e, prompt),
+            danger: true
+        }
+    ];
 
     return (
         <div className="flex flex-col h-full bg-obsidian-950 font-grotesk">
@@ -163,33 +208,44 @@ const PromptDatabase = ({ prompts, onSelect }) => {
                     <>
                         {/*--- LIST VIEW ---*/}
                         {view === 'list' && (
-                            <div className="space-y-1">
+                            <div className="space-y-1.5">
                                 {filteredPrompts.map(prompt => (
                                     <div
                                         key={prompt.id}
-                                        onClick={() => onSelect(prompt)}
-                                        className="group flex items-center justify-between px-4 py-3 rounded-lg border border-transparent hover:bg-obsidian-900 border-obsidian-950 hover:border-obsidian-800 cursor-pointer transition-all"
+                                        className="group flex items-center justify-between px-4 py-3.5 rounded-lg border border-transparent hover:bg-obsidian-900 hover:border-obsidian-800 cursor-pointer transition-all"
                                     >
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-obsidian-200 font-semibold group-hover:text-white transition-colors">
-                                                    {prompt.titulo || 'Sin título'}
-                                                </span>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    {prompt.categoria && (
-                                                        <span className="text-xs px-1.5 py-0.5 rounded bg-obsidian-900 text-obsidian-400 border border-obsidian-800">
-                                                            {prompt.categoria}
-                                                        </span>
+                                        <div 
+                                            className="flex items-center gap-4 flex-1 min-w-0"
+                                            onClick={() => onSelect(prompt)}
+                                        >
+                                            <div className="flex flex-col flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-sm font-semibold text-obsidian-200 group-hover:text-white transition-colors truncate">
+                                                        {prompt.titulo || 'Sin título'}
+                                                    </span>
+                                                    {prompt.es_favorito && (
+                                                        <Star size={12} className="fill-yellow-500 text-yellow-500 shrink-0" />
                                                     )}
-                                                    {prompt.etiquetas && prompt.etiquetas.slice(0, 3).map((tag, i) => (
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="text-xs text-obsidian-600 font-mono">
+                                                        {formatDate(prompt.actualizado_en)}
+                                                    </span>
+                                                    {prompt.categoria && (
+                                                        <>
+                                                            <span className="w-1 h-1 rounded-full bg-obsidian-700" />
+                                                            <span className="text-xs px-2 py-0.5 rounded-md bg-obsidian-900 text-obsidian-400 border border-obsidian-800">
+                                                                {prompt.categoria}
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                    {prompt.etiquetas && prompt.etiquetas.slice(0, 2).map((tag, i) => (
                                                         <span key={i} className="text-xs text-obsidian-500">#{tag}</span>
                                                     ))}
                                                 </div>
                                             </div>
                                         </div>
-                                        <span className="text-xs text-obsidian-600 group-hover:text-obsidian-400 font-mono">
-                                            {formatDate(prompt.actualizado_en)}
-                                        </span>
+                                        <MenuDropdown opciones={getMenuOpciones(prompt)} />
                                     </div>
                                 ))}
                             </div>
@@ -201,42 +257,53 @@ const PromptDatabase = ({ prompts, onSelect }) => {
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-obsidian-900/50 text-obsidian-400 font-medium border-b border-obsidian-800">
                                         <tr>
-                                            <th className="px-4 py-3 font-normal w-1/3">Nombre</th>
-                                            <th className="px-4 py-3 font-normal w-1/4">Categoría</th>
-                                            <th className="px-4 py-3 font-normal w-1/4">Etiquetas</th>
-                                            <th className="px-4 py-3 font-normal w-1/6">Fecha</th>
+                                            <th className="px-4 py-3 font-normal">Nombre</th>
+                                            <th className="px-4 py-3 font-normal hidden md:table-cell">Categoría</th>
+                                            <th className="px-4 py-3 font-normal hidden lg:table-cell">Etiquetas</th>
+                                            <th className="px-4 py-3 font-normal hidden sm:table-cell">Fecha</th>
+                                            <th className="px-4 py-3 font-normal w-12"></th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-obsidian-800/50">
                                         {filteredPrompts.map(prompt => (
                                             <tr
                                                 key={prompt.id}
-                                                onClick={() => onSelect(prompt)}
                                                 className="hover:bg-obsidian-900/40 cursor-pointer transition-colors group"
                                             >
-                                                <td className="px-4 py-3 text-obsidian-200 font-medium group-hover:text-white">
-                                                    {prompt.titulo || 'Sin título'}
+                                                <td 
+                                                    className="px-4 py-3.5 text-obsidian-200 font-medium group-hover:text-white"
+                                                    onClick={() => onSelect(prompt)}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="truncate">{prompt.titulo || 'Sin título'}</span>
+                                                        {prompt.es_favorito && (
+                                                            <Star size={12} className="fill-yellow-500 text-yellow-500 shrink-0" />
+                                                        )}
+                                                    </div>
                                                 </td>
-                                                <td className="px-4 py-3">
+                                                <td className="px-4 py-3.5 hidden md:table-cell" onClick={() => onSelect(prompt)}>
                                                     {prompt.categoria ? (
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-obsidian-800 text-obsidian-300">
                                                             {prompt.categoria}
                                                         </span>
                                                     ) : <span className="text-obsidian-700">-</span>}
                                                 </td>
-                                                <td className="px-4 py-3">
+                                                <td className="px-4 py-3.5 hidden lg:table-cell" onClick={() => onSelect(prompt)}>
                                                     <div className="flex gap-1 flex-wrap">
                                                         {prompt.etiquetas && prompt.etiquetas.length > 0 ? (
-                                                            prompt.etiquetas.map((t, i) => (
+                                                            prompt.etiquetas.slice(0, 3).map((t, i) => (
                                                                 <span key={i} className="text-xs bg-obsidian-800/50 px-1.5 py-0.5 rounded text-obsidian-400">
                                                                     {t}
                                                                 </span>
                                                             ))
-                                                        ) : <span className="text-obsidian-700 font-light text-xs">Sin etiquetas</span>}
+                                                        ) : <span className="text-obsidian-700 font-light text-xs">-</span>}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-obsidian-500 text-xs font-mono">
+                                                <td className="px-4 py-3.5 text-obsidian-500 text-xs font-mono hidden sm:table-cell" onClick={() => onSelect(prompt)}>
                                                     {formatDate(prompt.actualizado_en)}
+                                                </td>
+                                                <td className="px-4 py-3.5">
+                                                    <MenuDropdown opciones={getMenuOpciones(prompt)} />
                                                 </td>
                                             </tr>
                                         ))}
@@ -251,28 +318,44 @@ const PromptDatabase = ({ prompts, onSelect }) => {
                                 {filteredPrompts.map(prompt => (
                                     <div
                                         key={prompt.id}
-                                        onClick={() => onSelect(prompt)}
-                                        className="group bg-obsidian-900/30 border border-obsidian-800 hover:border-obsidian-600 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5"
+                                        className="group bg-obsidian-900/30 border border-obsidian-800 hover:border-obsidian-600 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5 relative"
                                     >
-                                        <div className="h-20 sm:h-24 bg-gradient-to-br from-obsidian-800 to-obsidian-900 border-b border-obsidian-800 p-3 sm:p-4 relative">
-                                            {prompt.categoria && (
-                                                <span className="absolute top-2 sm:top-3 left-2 sm:left-3 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-obsidian-400 bg-obsidian-950/50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded backdrop-blur-sm">
-                                                    {prompt.categoria}
-                                                </span>
-                                            )}
-                                            {prompt.es_favorito && (
-                                                <Star size={12} className="absolute top-2 sm:top-3 right-2 sm:right-3 fill-white text-white opacity-60" />
-                                            )}
+                                        {/* Menu en esquina superior derecha */}
+                                        <div className="absolute top-2 right-2 z-10">
+                                            <MenuDropdown opciones={getMenuOpciones(prompt)} />
                                         </div>
-                                        <div className="p-3 sm:p-4">
-                                            <h3 className="font-semibold text-sm sm:text-base text-obsidian-200 mb-1.5 sm:mb-2 truncate group-hover:text-white transition-colors">
-                                                {prompt.titulo || 'Sin título'}
-                                            </h3>
-                                            <p className="text-xs sm:text-sm text-obsidian-500 line-clamp-2 h-8 sm:h-10 leading-relaxed font-light">
-                                                {prompt.contenido || 'Sin contenido...'}
-                                            </p>
-                                            <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-obsidian-800/50 flex items-center justify-between text-[10px] sm:text-xs text-obsidian-500 font-mono">
-                                                <span>{formatDate(prompt.actualizado_en)}</span>
+
+                                        <div 
+                                            onClick={() => onSelect(prompt)}
+                                            className="h-full"
+                                        >
+                                            <div className="h-20 sm:h-24 bg-gradient-to-br from-obsidian-800 to-obsidian-900 border-b border-obsidian-800 p-3 sm:p-4 relative">
+                                                {prompt.categoria && (
+                                                    <span className="absolute top-2 sm:top-3 left-2 sm:left-3 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-obsidian-400 bg-obsidian-950/50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded backdrop-blur-sm">
+                                                        {prompt.categoria}
+                                                    </span>
+                                                )}
+                                                {prompt.es_favorito && (
+                                                    <Star size={12} className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 fill-yellow-500 text-yellow-500" />
+                                                )}
+                                            </div>
+                                            <div className="p-3 sm:p-4">
+                                                <h3 className="font-semibold text-sm sm:text-base text-obsidian-200 mb-1.5 sm:mb-2 truncate group-hover:text-white transition-colors">
+                                                    {prompt.titulo || 'Sin título'}
+                                                </h3>
+                                                <p className="text-xs sm:text-sm text-obsidian-500 line-clamp-2 h-8 sm:h-10 leading-relaxed font-light mb-3">
+                                                    {prompt.contenido || 'Sin contenido...'}
+                                                </p>
+                                                <div className="pt-2 sm:pt-3 border-t border-obsidian-800/50 flex items-center justify-between">
+                                                    <span className="text-[10px] sm:text-xs text-obsidian-500 font-mono">
+                                                        {formatDate(prompt.actualizado_en)}
+                                                    </span>
+                                                    {prompt.etiquetas && prompt.etiquetas.length > 0 && (
+                                                        <span className="text-[10px] text-obsidian-600">
+                                                            {prompt.etiquetas.length} {prompt.etiquetas.length === 1 ? 'etiqueta' : 'etiquetas'}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -283,6 +366,19 @@ const PromptDatabase = ({ prompts, onSelect }) => {
                 )}
 
             </div>
+
+            {/* Modal de Confirmación */}
+            <ModalConfirmacion
+                abierto={confirmacion.estado.abierto}
+                onCerrar={confirmacion.cerrar}
+                onConfirmar={confirmacion.confirmar}
+                titulo={confirmacion.estado.titulo}
+                mensaje={confirmacion.estado.mensaje}
+                tipo={confirmacion.estado.tipo}
+                textoConfirmar={confirmacion.estado.textoConfirmar}
+                textoCancelar={confirmacion.estado.textoCancelar}
+                cargando={confirmacion.estado.cargando}
+            />
         </div>
     );
 };
