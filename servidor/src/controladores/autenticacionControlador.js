@@ -153,7 +153,13 @@ export const verificarEmail = async (req, res) => {
   try {
     const { token } = req.body;
 
+    console.log('📧 Intento de verificación de email:', { 
+      tokenRecibido: token ? 'Sí' : 'No',
+      longitudToken: token?.length 
+    });
+
     if (!token) {
+      console.log('❌ Token no proporcionado');
       return res.status(400).json({
         error: 'TOKEN_REQUERIDO',
         mensaje: 'Token de verificación requerido'
@@ -173,6 +179,8 @@ export const verificarEmail = async (req, res) => {
     );
 
     if (resultado.rows.length === 0) {
+      console.log('⚠️ No se pudo verificar, buscando razón...');
+      
       // Verificar por qué falló
       const usuario = await pool.query(
         'SELECT esta_verificado, expira_token_verificacion FROM usuarios WHERE token_verificacion = $1',
@@ -180,6 +188,7 @@ export const verificarEmail = async (req, res) => {
       );
 
       if (usuario.rows.length === 0) {
+        console.log('❌ Token no encontrado en BD');
         return res.status(404).json({
           error: 'TOKEN_INVALIDO',
           mensaje: 'Token de verificación inválido'
@@ -187,12 +196,14 @@ export const verificarEmail = async (req, res) => {
       }
 
       if (usuario.rows[0].esta_verificado) {
+        console.log('✅ Usuario ya verificado');
         return res.status(400).json({
           error: 'YA_VERIFICADO',
           mensaje: 'Este email ya está verificado'
         });
       }
 
+      console.log('⏰ Token expirado');
       return res.status(410).json({
         error: 'TOKEN_EXPIRADO',
         mensaje: 'Token expirado. Solicita uno nuevo',
@@ -200,13 +211,14 @@ export const verificarEmail = async (req, res) => {
       });
     }
 
+    console.log('✅ Email verificado exitosamente:', resultado.rows[0].email);
     res.json({
       mensaje: 'Email verificado exitosamente. Ya puedes iniciar sesión.',
       email: resultado.rows[0].email
     });
 
   } catch (error) {
-    console.error('Error en verificarEmail:', error);
+    console.error('❌ Error en verificarEmail:', error);
     res.status(500).json({
       error: 'VERIFICACION_FALLO',
       mensaje: 'Error al verificar email'

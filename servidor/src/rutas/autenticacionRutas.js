@@ -28,7 +28,7 @@ const limitadorAuth = rateLimit({
 
 const limitadorVerificacion = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutos
-  max: 3,
+  max: 10, // Aumentado de 3 a 10
   message: { 
     error: 'DEMASIADAS_SOLICITUDES', 
     mensaje: 'Demasiados intentos, intenta en 5 minutos' 
@@ -37,7 +37,13 @@ const limitadorVerificacion = rateLimit({
   legacyHeaders: false,
   // Configuración para Render
   skip: (req) => false,
-  validate: { xForwardedForHeader: false }
+  validate: { xForwardedForHeader: false },
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'DEMASIADAS_SOLICITUDES',
+      mensaje: 'Demasiados intentos de verificación. Espera 5 minutos.'
+    });
+  }
 });
 
 // Rutas públicas
