@@ -1,11 +1,11 @@
-import transportador from '../config/email.js';
+import resend from '../config/email.js';
 
 export const enviarEmailVerificacion = async (email, token) => {
   try {
     const urlVerificacion = `${process.env.FRONTEND_URL}/verificar-email?token=${token}`;
     
-    await transportador.sendMail({
-      from: process.env.EMAIL_FROM,
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'Bóveda de Prompts <onboarding@resend.dev>',
       to: email,
       subject: 'Verifica tu cuenta - Bóveda de Prompts',
       html: `
@@ -43,8 +43,17 @@ export const enviarEmailVerificacion = async (email, token) => {
         </html>
       `
     });
+
+    if (error) {
+      console.error('Error de Resend:', error);
+      return { 
+        exito: false, 
+        error: error.message 
+      };
+    }
     
-    return { exito: true };
+    console.log('✅ Email enviado:', data?.id);
+    return { exito: true, id: data?.id };
   } catch (error) {
     console.error('Error enviando email:', error);
     return { 
@@ -58,8 +67,8 @@ export const enviarEmailReseteoContrasena = async (email, token) => {
   try {
     const urlReseteo = `${process.env.FRONTEND_URL}/resetear-contrasena?token=${token}`;
     
-    await transportador.sendMail({
-      from: process.env.EMAIL_FROM,
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'Bóveda de Prompts <onboarding@resend.dev>',
       to: email,
       subject: 'Recupera tu contraseña - Bóveda de Prompts',
       html: `
@@ -97,8 +106,17 @@ export const enviarEmailReseteoContrasena = async (email, token) => {
         </html>
       `
     });
+
+    if (error) {
+      console.error('Error de Resend:', error);
+      return { 
+        exito: false, 
+        error: error.message 
+      };
+    }
     
-    return { exito: true };
+    console.log('✅ Email enviado:', data?.id);
+    return { exito: true, id: data?.id };
   } catch (error) {
     console.error('Error enviando email:', error);
     return { 
