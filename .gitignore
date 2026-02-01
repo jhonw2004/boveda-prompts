@@ -5,9 +5,9 @@ node_modules/
 # Variables de entorno
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*.local
+*/.env
+*/.env.local
 
 # Logs
 logs
@@ -21,7 +21,8 @@ lerna-debug.log*
 # Build
 dist/
 dist-ssr/
-build/
+*/dist/
+*/dist-ssr/
 *.local
 
 # Editor
@@ -39,7 +40,7 @@ build/
 coverage/
 .nyc_output/
 
-# Misc
+# Temporal
+*.tmp
+*.temp
 .cache/
-.temp/
-.tmp/

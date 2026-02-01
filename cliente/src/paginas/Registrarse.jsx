@@ -27,6 +27,22 @@ const Registrarse = () => {
       toast.error('Completa todos los campos');
       return;
     }
+
+    // Validar nombre de usuario
+    const regexNombreUsuario = /^[a-zA-Z][a-zA-Z0-9_-]{2,19}$/;
+    if (!regexNombreUsuario.test(formData.nombre)) {
+      if (formData.nombre.length < 3) {
+        toast.error('El nombre de usuario debe tener al menos 3 caracteres');
+      } else if (formData.nombre.length > 20) {
+        toast.error('El nombre de usuario no puede tener más de 20 caracteres');
+      } else if (!/^[a-zA-Z]/.test(formData.nombre)) {
+        toast.error('El nombre de usuario debe comenzar con una letra');
+      } else {
+        toast.error('El nombre de usuario solo puede contener letras, números, guiones (-) y guiones bajos (_)');
+      }
+      return;
+    }
+
     if (formData.contrasena !== formData.confirmarContrasena) {
       toast.error('Las contraseñas no coinciden');
       return;
@@ -72,7 +88,7 @@ const Registrarse = () => {
           <form onSubmit={manejarEnvio} className="space-y-4">
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-obsidian-400 ml-1">Nombre</label>
+              <label className="text-xs font-medium text-obsidian-400 ml-1">Nombre de usuario</label>
               <div className="relative group">
                 <User className="absolute left-3 top-3 text-obsidian-500 group-focus-within:text-white transition-colors" size={18} />
                 <input
@@ -80,10 +96,13 @@ const Registrarse = () => {
                   name="nombre"
                   value={formData.nombre}
                   onChange={manejarCambio}
-                  placeholder="Tu nombre"
+                  placeholder="usuario123"
                   className="input-minimal pl-10"
                 />
               </div>
+              <p className="text-xs text-obsidian-500 ml-1">
+                3-20 caracteres. Solo letras, números, guiones (-) y guiones bajos (_). Debe comenzar con una letra.
+              </p>
             </div>
 
             <div className="space-y-2">
