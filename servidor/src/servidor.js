@@ -7,7 +7,12 @@ import pool from './config/baseDatos.js';
 dotenv.config();
 
 const app = express();
-const PUERTO = process.env.PUERTO || 5000;
+const PUERTO = process.env.PORT || process.env.PUERTO || 5000;
+
+// Configurar trust proxy para Render
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 
 // Middlewares de seguridad
 app.use(helmet());
