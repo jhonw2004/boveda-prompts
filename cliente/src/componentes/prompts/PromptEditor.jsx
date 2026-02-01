@@ -33,6 +33,27 @@ const PromptEditor = ({
         setTimeout(() => setCopied(false), 2000);
     };
 
+    // Keyboard shortcuts
+    React.useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Cmd/Ctrl + S to save
+            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                e.preventDefault();
+                if (hasChanges || isNew) {
+                    onSave();
+                }
+            }
+            // Cmd/Ctrl + K to toggle metadata
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setShowMeta(prev => !prev);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [hasChanges, isNew, onSave]);
+
     return (
         <div className="flex flex-col h-full bg-obsidian-950 font-grotesk relative">
 
@@ -87,16 +108,26 @@ const PromptEditor = ({
 
                     <button
                         onClick={onSave}
-                        disabled={!hasChanges && !isNew}
+                        disabled={!hasChanges && !isNew || saving}
                         className={`
-               flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+               flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
                ${hasChanges || isNew
-                                ? 'bg-white text-obsidian-950 hover:bg-obsidian-200'
-                                : 'text-obsidian-600 cursor-not-allowed'}
+                                ? 'bg-white text-obsidian-950 hover:bg-obsidian-200 shadow-sm'
+                                : 'text-obsidian-600 cursor-not-allowed bg-obsidian-900'}
             `}
                     >
-                        <Save size={16} />
-                        <span className="hidden sm:inline">Guardar</span>
+                        {saving ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-obsidian-950 border-t-transparent rounded-full animate-spin"></div>
+                                <span className="hidden sm:inline">Guardando...</span>
+                            </>
+                        ) : (
+                            <>
+                                <Save size={16} />
+                                <span className="hidden sm:inline">Guardar</span>
+                                <span className="hidden md:inline text-xs opacity-60 ml-1">⌘S</span>
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

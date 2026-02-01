@@ -36,6 +36,8 @@ CREATE TABLE prompts (
   categoria VARCHAR(100),
   etiquetas TEXT[] DEFAULT '{}',
   es_favorito BOOLEAN DEFAULT FALSE,
+  eliminado BOOLEAN DEFAULT FALSE,
+  eliminado_en TIMESTAMP,
   creado_en TIMESTAMP DEFAULT NOW(),
   actualizado_en TIMESTAMP DEFAULT NOW(),
   
@@ -53,6 +55,7 @@ CREATE INDEX idx_prompts_creado_en ON prompts(creado_en DESC);
 CREATE INDEX idx_prompts_actualizado_en ON prompts(actualizado_en DESC);
 CREATE INDEX idx_prompts_categoria ON prompts(categoria) WHERE categoria IS NOT NULL;
 CREATE INDEX idx_prompts_es_favorito ON prompts(es_favorito) WHERE es_favorito = TRUE;
+CREATE INDEX idx_prompts_eliminado ON prompts(eliminado) WHERE eliminado = FALSE;
 CREATE INDEX idx_prompts_etiquetas ON prompts USING GIN(etiquetas);
 
 -- Índice para búsqueda full-text

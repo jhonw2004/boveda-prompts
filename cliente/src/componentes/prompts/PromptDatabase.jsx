@@ -35,14 +35,14 @@ const PromptDatabase = ({ prompts, onSelect }) => {
         <div className="flex flex-col h-full bg-obsidian-950 font-grotesk">
 
             {/* Database Header */}
-            <div className="px-8 py-8 border-b border-obsidian-900">
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-obsidian-900 flex items-center justify-center border border-obsidian-800">
-                        <Database size={24} className="text-obsidian-200" />
+            <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 border-b border-obsidian-900">
+                <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-obsidian-900 flex items-center justify-center border border-obsidian-800">
+                        <Database size={20} className="sm:w-6 sm:h-6 text-obsidian-200" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-white tracking-tight">Biblioteca</h1>
-                        <p className="text-sm text-obsidian-500 font-medium">{filteredPrompts.length} documentos</p>
+                        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Biblioteca</h1>
+                        <p className="text-xs sm:text-sm text-obsidian-500 font-medium">{filteredPrompts.length} documentos</p>
                     </div>
                 </div>
 
@@ -151,12 +151,13 @@ const PromptDatabase = ({ prompts, onSelect }) => {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
 
                 {filteredPrompts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-obsidian-600 opacity-60">
                         <Search size={32} className="mb-3 opacity-50" />
-                        <p>No se encontraron resultados</p>
+                        <p className="text-lg">No se encontraron resultados</p>
+                        <p className="text-sm mt-1">Intenta con otros términos de búsqueda</p>
                     </div>
                 ) : (
                     <>
@@ -246,30 +247,32 @@ const PromptDatabase = ({ prompts, onSelect }) => {
 
                         {/*--- GALLERY VIEW ---*/}
                         {view === 'gallery' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
                                 {filteredPrompts.map(prompt => (
                                     <div
                                         key={prompt.id}
                                         onClick={() => onSelect(prompt)}
-                                        className="group bg-obsidian-900/30 border border-obsidian-800 hover:border-obsidian-600 rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:shadow-black/20 hover:-translate-y-1"
+                                        className="group bg-obsidian-900/30 border border-obsidian-800 hover:border-obsidian-600 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5"
                                     >
-                                        <div className="h-24 bg-gradient-to-br from-obsidian-800 to-obsidian-900 border-b border-obsidian-800 p-4 relative">
+                                        <div className="h-20 sm:h-24 bg-gradient-to-br from-obsidian-800 to-obsidian-900 border-b border-obsidian-800 p-3 sm:p-4 relative">
                                             {prompt.categoria && (
-                                                <span className="absolute top-3 left-3 text-[10px] uppercase font-bold tracking-wider text-obsidian-400 bg-obsidian-950/50 px-2 py-1 rounded backdrop-blur-sm">
+                                                <span className="absolute top-2 sm:top-3 left-2 sm:left-3 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-obsidian-400 bg-obsidian-950/50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded backdrop-blur-sm">
                                                     {prompt.categoria}
                                                 </span>
                                             )}
+                                            {prompt.es_favorito && (
+                                                <Star size={12} className="absolute top-2 sm:top-3 right-2 sm:right-3 fill-white text-white opacity-60" />
+                                            )}
                                         </div>
-                                        <div className="p-4">
-                                            <h3 className="font-semibold text-obsidian-200 mb-2 truncate group-hover:text-white">
+                                        <div className="p-3 sm:p-4">
+                                            <h3 className="font-semibold text-sm sm:text-base text-obsidian-200 mb-1.5 sm:mb-2 truncate group-hover:text-white transition-colors">
                                                 {prompt.titulo || 'Sin título'}
                                             </h3>
-                                            <p className="text-sm text-obsidian-500 line-clamp-2 h-10 leading-relaxed font-light">
+                                            <p className="text-xs sm:text-sm text-obsidian-500 line-clamp-2 h-8 sm:h-10 leading-relaxed font-light">
                                                 {prompt.contenido || 'Sin contenido...'}
                                             </p>
-                                            <div className="mt-4 pt-3 border-t border-obsidian-800/50 flex items-center justify-between text-xs text-obsidian-500 font-mono">
+                                            <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-obsidian-800/50 flex items-center justify-between text-[10px] sm:text-xs text-obsidian-500 font-mono">
                                                 <span>{formatDate(prompt.actualizado_en)}</span>
-                                                {prompt.es_favorito && <Star size={12} className="fill-white text-white opacity-80" />}
                                             </div>
                                         </div>
                                     </div>

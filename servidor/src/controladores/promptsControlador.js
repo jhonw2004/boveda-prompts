@@ -131,10 +131,13 @@ export const obtenerPrompts = async (req, res) => {
     const limite = Math.min(100, Math.max(1, parseInt(req.query.limite) || 20));
     const desplazamiento = (pagina - 1) * limite;
     
-    const { busqueda, categoria, es_favorito, ordenar } = req.query;
+    const { busqueda, categoria, es_favorito, ordenar, eliminado } = req.query;
     
-    let consulta = 'SELECT * FROM prompts WHERE usuario_id = $1';
-    let consultaConteo = 'SELECT COUNT(*) FROM prompts WHERE usuario_id = $1';
+    // Por defecto, solo mostrar prompts no eliminados
+    const mostrarEliminados = eliminado === 'true';
+    
+    let consulta = `SELECT * FROM prompts WHERE usuario_id = $1 AND eliminado = ${mostrarEliminados}`;
+    let consultaConteo = `SELECT COUNT(*) FROM prompts WHERE usuario_id = $1 AND eliminado = ${mostrarEliminados}`;
     const parametros = [req.usuario.id];
     let indiceParam = 2;
     
@@ -377,13 +380,32 @@ export const actualizarPrompt = async (req, res) => {
   }
 };
 
-// Eliminar prompt
+// Eliminar prompt (soft delete)
 export const eliminarPrompt = async (req, res) => {
   try {
     const { id } = req.params;
+    const { permanente } = req.query;
     
+    if (permanente === 'true') {
+      // Eliminación permanente
+      const resultado = await pool.query(
+        'DELETE FROM prompts WHERE id = $1 AND usuario_id = $2 RETURNING id',
+        [id, req.usuario.id]
+      );
+      
+      if (resultado.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'PROMPT_NO_ENCONTRADO',
+          mensaje: 'Prompt no encontrado' 
+        });
+      }
+      
+      return res.json({ mensaje: 'Prompt eliminado permanentemente' });
+    }
+    
+    // Soft delete
     const resultado = await pool.query(
-      'DELETE FROM prompts WHERE id = $1 AND usuario_id = $2 RETURNING id',
+      'UPDATE prompts SET eliminado = true, eliminado_en = NOW() WHERE id = $1 AND usuario_id = $2 AND eliminado = false RETURNING id',
       [id, req.usuario.id]
     );
     
@@ -394,13 +416,66 @@ export const eliminarPrompt = async (req, res) => {
       });
     }
     
-    res.json({ mensaje: 'Prompt eliminado exitosamente' });
+    res.json({ mensaje: 'Prompt movido a la papelera' });
     
   } catch (error) {
     console.error('Error en eliminarPrompt:', error);
     res.status(500).json({ 
       error: 'ELIMINACION_FALLO',
       mensaje: 'Error al eliminar prompt' 
+    });
+  }
+};
+
+// Restaurar prompt
+export const restaurarPrompt = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const resultado = await pool.query(
+      'UPDATE prompts SET eliminado = false, eliminado_en = NULL WHERE id = $1 AND usuario_id = $2 AND eliminado = true RETURNING *',
+      [id, req.usuario.id]
+    );
+    
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'PROMPT_NO_ENCONTRADO',
+        mensaje: 'Prompt no encontrado en la papelera' 
+      });
+    }
+    
+    res.json({ 
+      mensaje: 'Prompt restaurado exitosamente',
+      prompt: resultado.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('Error en restaurarPrompt:', error);
+    res.status(500).json({ 
+      error: 'RESTAURACION_FALLO',
+      mensaje: 'Error al restaurar prompt' 
+    });
+  }
+};
+
+// Vaciar papelera
+export const vaciarPapelera = async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      'DELETE FROM prompts WHERE usuario_id = $1 AND eliminado = true RETURNING id',
+      [req.usuario.id]
+    );
+    
+    res.json({ 
+      mensaje: 'Papelera vaciada exitosamente',
+      eliminados: resultado.rows.length
+    });
+    
+  } catch (error) {
+    console.error('Error en vaciarPapelera:', error);
+    res.status(500).json({ 
+      error: 'VACIADO_FALLO',
+      mensaje: 'Error al vaciar papelera' 
     });
   }
 };

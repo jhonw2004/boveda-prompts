@@ -5,6 +5,9 @@ import { useAutenticacion } from '../contexto/AutenticacionContexto';
 import PromptSidebar from '../componentes/prompts/PromptSidebar';
 import PromptEditor from '../componentes/prompts/PromptEditor';
 import PromptDatabase from '../componentes/prompts/PromptDatabase';
+import Papelera from '../componentes/prompts/Papelera';
+import ModalConfirmacion from '../componentes/comunes/ModalConfirmacion';
+import { useConfirmacion } from '../hooks/useConfirmacion';
 import toast from 'react-hot-toast';
 import { Menu, FileText } from 'lucide-react';
 
@@ -12,6 +15,7 @@ const Prompts = () => {
     // Context & Hooks
     const { usuario, cerrarSesion } = useAutenticacion();
     const navigate = useNavigate();
+    const confirmacion = useConfirmacion();
 
     // Data State
     const [prompts, setPrompts] = useState([]);
@@ -40,6 +44,7 @@ const Prompts = () => {
 
     // Mobile / UI State
     const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+    const [papeleraAbierta, setPapeleraAbierta] = useState(false);
 
     // Initial Load
     useEffect(() => {
@@ -87,12 +92,18 @@ const Prompts = () => {
     };
 
     /* MODIFIED: Handle specific string commands like 'database' */
-    const handleSelect = (promptOrId) => {
+    const handleSelect = async (promptOrId) => {
         // Check for changes (dirty state checking)
         if (selectedId && selectedId !== 'database' && hasChanges) {
-            if (!window.confirm('Tienes cambios sin guardar. ¿Deseas descartarlos?')) {
-                return;
-            }
+            const confirmar = await confirmacion.mostrar({
+                titulo: 'Cambios sin guardar',
+                mensaje: 'Tienes cambios sin guardar. ¿Deseas descartarlos y continuar?',
+                tipo: 'warning',
+                textoConfirmar: 'Descartar',
+                textoCancelar: 'Cancelar'
+            });
+            
+            if (!confirmar) return;
         }
 
         /* Logic to handle switching to Database View */
@@ -119,11 +130,17 @@ const Prompts = () => {
         if (window.innerWidth < 1024) setSidebarOpen(false);
     };
 
-    const handleNew = () => {
+    const handleNew = async () => {
         if (selectedId && selectedId !== 'database' && hasChanges) {
-            if (!window.confirm('Tienes cambios sin guardar. ¿Deseas descartarlos?')) {
-                return;
-            }
+            const confirmar = await confirmacion.mostrar({
+                titulo: 'Cambios sin guardar',
+                mensaje: 'Tienes cambios sin guardar. ¿Deseas descartarlos y crear una nueva nota?',
+                tipo: 'warning',
+                textoConfirmar: 'Descartar',
+                textoCancelar: 'Cancelar'
+            });
+            
+            if (!confirmar) return;
         }
 
         setSelectedId('new');
@@ -185,16 +202,20 @@ const Prompts = () => {
 
     const handleDelete = async () => {
         if (selectedId === 'new') return;
-        if (!window.confirm('¿Eliminar este prompt para siempre?')) return;
-
-        try {
-            await promptsServicio.eliminarPrompt(selectedId);
-            toast.success('Eliminado');
-            await cargarPrompts();
-            handleSelect('database'); // Return to Library
-        } catch (error) {
-            toast.error('Error al eliminar');
-        }
+        
+        await confirmacion.mostrar({
+            titulo: 'Mover a la papelera',
+            mensaje: '¿Estás seguro de que deseas mover este prompt a la papelera? Podrás recuperarlo más tarde.',
+            tipo: 'warning',
+            textoConfirmar: 'Mover a papelera',
+            textoCancelar: 'Cancelar',
+            onConfirmar: async () => {
+                await promptsServicio.eliminarPrompt(selectedId, false);
+                toast.success('Movido a la papelera');
+                await cargarPrompts();
+                handleSelect('database');
+            }
+        });
     };
 
     const handleToggleFavorito = () => {
@@ -225,6 +246,7 @@ const Prompts = () => {
                 onLogout={handleLogout}
                 isOpen={sidebarOpen}
                 setIsOpen={setSidebarOpen}
+                onAbrirPapelera={() => setPapeleraAbierta(true)}
             />
 
             <div className="flex-1 flex flex-col h-full min-w-0 bg-obsidian-950 relative transition-all duration-300">
@@ -276,6 +298,26 @@ const Prompts = () => {
                     )}
                 </div>
             </div>
+
+            {/* Papelera Modal */}
+            <Papelera 
+                abierto={papeleraAbierta}
+                onCerrar={() => setPapeleraAbierta(false)}
+                onRestaurar={() => cargarPrompts()}
+            />
+
+            {/* Modal de Confirmación */}
+            <ModalConfirmacion
+                abierto={confirmacion.estado.abierto}
+                onCerrar={confirmacion.cerrar}
+                onConfirmar={confirmacion.confirmar}
+                titulo={confirmacion.estado.titulo}
+                mensaje={confirmacion.estado.mensaje}
+                tipo={confirmacion.estado.tipo}
+                textoConfirmar={confirmacion.estado.textoConfirmar}
+                textoCancelar={confirmacion.estado.textoCancelar}
+                cargando={confirmacion.estado.cargando}
+            />
         </div>
     );
 };

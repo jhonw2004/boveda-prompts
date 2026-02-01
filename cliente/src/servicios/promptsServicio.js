@@ -21,8 +21,20 @@ export const promptsServicio = {
     return respuesta.data;
   },
   
-  eliminarPrompt: async (id) => {
-    const respuesta = await api.delete(`/prompts/${id}`);
+  eliminarPrompt: async (id, permanente = false) => {
+    const respuesta = await api.delete(`/prompts/${id}`, { 
+      params: { permanente: permanente.toString() } 
+    });
+    return respuesta.data;
+  },
+  
+  restaurarPrompt: async (id) => {
+    const respuesta = await api.post(`/prompts/${id}/restaurar`);
+    return respuesta.data;
+  },
+  
+  vaciarPapelera: async () => {
+    const respuesta = await api.delete('/prompts/papelera/vaciar');
     return respuesta.data;
   },
   

@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node src/servidor.js",
-    "dev": "nodemon src/servidor.js"
+    "dev": "nodemon src/servidor.js",
+    "migrar": "node migrar.js",
+    "verificar": "node verificar.js"
   },
   "keywords": [
     "prompts",
