@@ -18,7 +18,12 @@ const limitadorAuth = rateLimit({
   message: { 
     error: 'DEMASIADAS_SOLICITUDES', 
     mensaje: 'Demasiados intentos, intenta en 15 minutos' 
-  }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Configuración para Render
+  skip: (req) => false,
+  validate: { xForwardedForHeader: false }
 });
 
 const limitadorVerificacion = rateLimit({
@@ -27,7 +32,12 @@ const limitadorVerificacion = rateLimit({
   message: { 
     error: 'DEMASIADAS_SOLICITUDES', 
     mensaje: 'Demasiados intentos, intenta en 5 minutos' 
-  }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Configuración para Render
+  skip: (req) => false,
+  validate: { xForwardedForHeader: false }
 });
 
 // Rutas públicas
