@@ -2,6 +2,17 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import pool from './baseDatos.js';
 
+// Logging para debug
+console.log('🔐 Configurando Passport con Google OAuth');
+console.log('📋 GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'NO DEFINIDO');
+console.log('📋 GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'DEFINIDO' : 'NO DEFINIDO');
+console.log('📋 GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL || 'NO DEFINIDO');
+
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  console.error('❌ FATAL: Faltan credenciales de Google OAuth');
+  console.error('   Verifica que GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET estén configurados en las variables de entorno');
+}
+
 passport.use(
   new GoogleStrategy(
     {
@@ -11,6 +22,8 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
+        console.log('✅ Google OAuth callback exitoso para:', profile.emails[0].value);
+        
         const googleId = profile.id;
         const email = profile.emails[0].value;
         const nombre = profile.displayName;
@@ -34,6 +47,8 @@ passport.use(
              WHERE id = $3`,
             [nombre, avatarUrl, usuario.id]
           );
+          
+          console.log('👤 Usuario existente actualizado:', email);
         } else {
           // Verificar si existe usuario con ese email (migración de local a OAuth)
           resultado = await pool.query(
@@ -55,6 +70,8 @@ passport.use(
                WHERE id = $3`,
               [googleId, avatarUrl, usuario.id]
             );
+            
+            console.log('🔗 Usuario local vinculado con Google:', email);
           } else {
             // Crear nuevo usuario
             resultado = await pool.query(
@@ -72,12 +89,13 @@ passport.use(
             );
             
             usuario = resultado.rows[0];
+            console.log('✨ Nuevo usuario creado:', email);
           }
         }
 
         return done(null, usuario);
       } catch (error) {
-        console.error('Error en estrategia de Google:', error);
+        console.error('❌ Error en estrategia de Google:', error);
         return done(error, null);
       }
     }
@@ -101,5 +119,7 @@ passport.deserializeUser(async (id, done) => {
     done(error, null);
   }
 });
+
+console.log('✅ Passport configurado correctamente');
 
 export default passport;
