@@ -5,13 +5,15 @@ const AutenticacionContexto = createContext(null);
 
 export const ProveedorAutenticacion = ({ children }) => {
   const [usuario, setUsuario] = useState(null);
+  const [token, setToken] = useState(null);
   const [cargando, setCargando] = useState(true);
   
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const tokenGuardado = localStorage.getItem('token');
     const usuarioGuardado = localStorage.getItem('usuario');
     
-    if (token && usuarioGuardado) {
+    if (tokenGuardado && usuarioGuardado) {
+      setToken(tokenGuardado);
       setUsuario(JSON.parse(usuarioGuardado));
     }
     
@@ -21,6 +23,7 @@ export const ProveedorAutenticacion = ({ children }) => {
   const iniciarSesion = async (email, contrasena) => {
     const datos = await autenticacionServicio.iniciarSesion(email, contrasena);
     setUsuario(datos.usuario);
+    setToken(datos.token);
     return datos;
   };
   
@@ -31,14 +34,18 @@ export const ProveedorAutenticacion = ({ children }) => {
   const cerrarSesion = () => {
     autenticacionServicio.cerrarSesion();
     setUsuario(null);
+    setToken(null);
   };
   
   const valor = {
     usuario,
+    token,
     cargando,
     iniciarSesion,
     registrar,
     cerrarSesion,
+    setToken,
+    setUsuario,
     estaAutenticado: !!usuario
   };
   
