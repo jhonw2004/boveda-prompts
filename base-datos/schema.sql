@@ -1,6 +1,6 @@
 -- ============================================
 -- BÓVEDA DE PROMPTS - SCHEMA COMPLETO
--- Versión: 2.3.0
+-- Versión: 3.0.0 (con OAuth 2.0)
 -- Fecha: Febrero 2026
 -- ============================================
 
@@ -17,38 +17,58 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================
--- TABLA: USUARIOS
+-- TABLA: USUARIOS (con soporte OAuth)
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS usuarios (
   id SERIAL PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
-  hash_contrasena VARCHAR(255) NOT NULL,
+  hash_contrasena VARCHAR(255),  -- Nullable para usuarios OAuth
   nombre VARCHAR(100),
+  
+  -- Campos OAuth
+  google_id VARCHAR(255) UNIQUE,
+  avatar_url TEXT,
+  proveedor_auth VARCHAR(50) DEFAULT 'local',  -- 'local', 'google', etc.
+  
+  -- Verificación (solo para auth local)
   esta_verificado BOOLEAN DEFAULT FALSE,
   token_verificacion VARCHAR(255),
   expira_token_verificacion TIMESTAMP,
+  
+  -- Reseteo de contraseña (solo para auth local)
   token_reseteo_contrasena VARCHAR(255),
   expira_reseteo_contrasena TIMESTAMP,
+  
+  -- Timestamps
   creado_en TIMESTAMP DEFAULT NOW(),
   actualizado_en TIMESTAMP DEFAULT NOW(),
   
   -- Constraints
   CONSTRAINT email_formato CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$'),
-  CONSTRAINT longitud_contrasena CHECK (LENGTH(hash_contrasena) >= 60),
-  CONSTRAINT longitud_nombre CHECK (nombre IS NULL OR LENGTH(TRIM(nombre)) > 0)
+  CONSTRAINT longitud_nombre CHECK (nombre IS NULL OR LENGTH(TRIM(nombre)) > 0),
+  -- Contraseña requerida solo para auth local
+  CONSTRAINT contrasena_requerida_local CHECK (
+    (proveedor_auth = 'local' AND hash_contrasena IS NOT NULL AND LENGTH(hash_contrasena) >= 60) OR
+    (proveedor_auth != 'local')
+  )
 );
 
 -- Índices para usuarios
 CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);
+CREATE INDEX IF NOT EXISTS idx_usuarios_google_id ON usuarios(google_id) WHERE google_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_usuarios_proveedor ON usuarios(proveedor_auth);
 CREATE INDEX IF NOT EXISTS idx_usuarios_token_verificacion ON usuarios(token_verificacion) WHERE token_verificacion IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_usuarios_token_reseteo ON usuarios(token_reseteo_contrasena) WHERE token_reseteo_contrasena IS NOT NULL;
 
 -- Comentarios
-COMMENT ON TABLE usuarios IS 'Tabla de usuarios del sistema';
-COMMENT ON COLUMN usuarios.esta_verificado IS 'Indica si el email del usuario ha sido verificado';
-COMMENT ON COLUMN usuarios.token_verificacion IS 'Token para verificación de email';
-COMMENT ON COLUMN usuarios.token_reseteo_contrasena IS 'Token para reseteo de contraseña';
+COMMENT ON TABLE usuarios IS 'Tabla de usuarios del sistema con soporte para OAuth 2.0';
+COMMENT ON COLUMN usuarios.google_id IS 'ID único del usuario en Google (para OAuth)';
+COMMENT ON COLUMN usuarios.avatar_url IS 'URL de la foto de perfil del usuario';
+COMMENT ON COLUMN usuarios.proveedor_auth IS 'Proveedor de autenticación: local, google, github, etc.';
+COMMENT ON COLUMN usuarios.esta_verificado IS 'Indica si el email del usuario ha sido verificado (auto true para OAuth)';
+COMMENT ON COLUMN usuarios.token_verificacion IS 'Token para verificación de email (solo auth local)';
+COMMENT ON COLUMN usuarios.token_reseteo_contrasena IS 'Token para reseteo de contraseña (solo auth local)';
 
 -- ============================================
 -- TABLA: PROMPTS
@@ -158,6 +178,7 @@ SELECT
   u.id as usuario_id,
   u.email,
   u.nombre,
+  u.proveedor_auth,
   COUNT(p.id) as total_prompts,
   COUNT(CASE WHEN p.es_favorito AND NOT p.eliminado THEN 1 END) as prompts_favoritos,
   COUNT(CASE WHEN p.eliminado THEN 1 END) as prompts_en_papelera,
@@ -166,7 +187,7 @@ SELECT
   MAX(p.actualizado_en) as ultimo_prompt_actualizado
 FROM usuarios u
 LEFT JOIN prompts p ON u.id = p.usuario_id
-GROUP BY u.id, u.email, u.nombre;
+GROUP BY u.id, u.email, u.nombre, u.proveedor_auth;
 
 -- Comentarios
 COMMENT ON VIEW estadisticas_usuario IS 'Vista con estadísticas agregadas por usuario';
@@ -183,14 +204,24 @@ DECLARE
 BEGIN
   DELETE FROM prompts 
   WHERE eliminado = true 
-  AND eliminado_en < NOW() - INTERVAL '30 days'
-  RETURNING id INTO prompts_eliminados;
+  AND eliminado_en < NOW() - INTERVAL '30 days';
   
-  RETURN COALESCE(prompts_eliminados, 0);
+  GET DIAGNOSTICS prompts_eliminados = ROW_COUNT;
+  
+  RETURN prompts_eliminados;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Comentarios
 COMMENT ON FUNCTION limpiar_papelera_antigua() IS 'Elimina permanentemente prompts que llevan más de 30 días en la papelera';
 
+-- ============================================
+-- DATOS INICIALES (Opcional)
+-- ============================================
 
+-- Puedes descomentar esto para crear un usuario de prueba
+/*
+INSERT INTO usuarios (email, nombre, proveedor_auth, esta_verificado)
+VALUES ('test@example.com', 'Usuario de Prueba', 'google', true)
+ON CONFLICT (email) DO NOTHING;
+*/

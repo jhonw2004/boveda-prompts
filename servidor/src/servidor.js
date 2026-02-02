@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import pool from './config/baseDatos.js';
+import passport from './config/passport.js';
 
 dotenv.config();
 
@@ -25,6 +26,9 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Inicializar Passport
+app.use(passport.initialize());
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
@@ -35,11 +39,13 @@ app.get('/health', (req, res) => {
 
 // Importar rutas
 import rutasAutenticacion from './rutas/autenticacionRutas.js';
+import rutasOAuth from './rutas/oauthRutas.js';
 import rutasPrompts from './rutas/promptsRutas.js';
 import rutasExportacion from './rutas/exportacionRutas.js';
 
 // Rutas
 app.use('/api/auth', rutasAutenticacion);
+app.use('/api/oauth', rutasOAuth);
 app.use('/api/prompts', rutasPrompts);
 app.use('/api/exportar', rutasExportacion);
 

@@ -1,12 +1,10 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 import pool from '../config/baseDatos.js';
-import { enviarEmailVerificacion, enviarEmailReseteoContrasena } from '../servicios/emailServicio.js';
 
 const RONDAS_SALT = 12;
 
-// Registro de usuario
+// Registro de usuario (auth local)
 export const registrar = async (req, res) => {
   const cliente = await pool.connect();
 
@@ -86,40 +84,38 @@ export const registrar = async (req, res) => {
     // Hashear contraseña
     const hashContrasena = await bcrypt.hash(contrasena, RONDAS_SALT);
 
-    // Generar token de verificación
-    const tokenVerificacion = crypto.randomBytes(32).toString('hex');
-    const expiraToken = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
-
     // Iniciar transacción
     await cliente.query('BEGIN');
 
-    // Crear usuario
+    // Crear usuario (auto-verificado con auth local)
     const resultado = await cliente.query(
-      `INSERT INTO usuarios (email, hash_contrasena, nombre, token_verificacion, expira_token_verificacion)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, email, nombre, creado_en`,
-      [email.toLowerCase(), hashContrasena, nombre, tokenVerificacion, expiraToken]
+      `INSERT INTO usuarios (
+        email, 
+        hash_contrasena, 
+        nombre, 
+        proveedor_auth, 
+        esta_verificado
+      )
+      VALUES ($1, $2, $3, 'local', true)
+      RETURNING id, email, nombre, creado_en`,
+      [email.toLowerCase(), hashContrasena, nombre]
     );
 
     const nuevoUsuario = resultado.rows[0];
 
-    // Enviar email de verificación
-    const resultadoEmail = await enviarEmailVerificacion(email, tokenVerificacion);
-
-    if (!resultadoEmail.exito) {
-      // Si falla el email, hacer rollback
-      await cliente.query('ROLLBACK');
-      return res.status(500).json({
-        error: 'ENVIO_EMAIL_FALLO',
-        mensaje: 'Error al enviar email de verificación. Intenta nuevamente.'
-      });
-    }
-
     // Commit de la transacción
     await cliente.query('COMMIT');
 
+    // Generar JWT automáticamente
+    const token = jwt.sign(
+      { usuarioId: nuevoUsuario.id, email: nuevoUsuario.email },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    );
+
     res.status(201).json({
-      mensaje: 'Usuario registrado exitosamente. Revisa tu email para verificar tu cuenta.',
+      mensaje: 'Usuario registrado exitosamente',
+      token,
       usuario: {
         id: nuevoUsuario.id,
         email: nuevoUsuario.email,
@@ -148,84 +144,6 @@ export const registrar = async (req, res) => {
   }
 };
 
-// Verificar email
-export const verificarEmail = async (req, res) => {
-  try {
-    const { token } = req.body;
-
-    console.log('📧 Intento de verificación de email:', { 
-      tokenRecibido: token ? 'Sí' : 'No',
-      longitudToken: token?.length 
-    });
-
-    if (!token) {
-      console.log('❌ Token no proporcionado');
-      return res.status(400).json({
-        error: 'TOKEN_REQUERIDO',
-        mensaje: 'Token de verificación requerido'
-      });
-    }
-
-    const resultado = await pool.query(
-      `UPDATE usuarios 
-       SET esta_verificado = true, 
-           token_verificacion = NULL, 
-           expira_token_verificacion = NULL
-       WHERE token_verificacion = $1 
-         AND expira_token_verificacion > NOW()
-         AND esta_verificado = false
-       RETURNING id, email`,
-      [token]
-    );
-
-    if (resultado.rows.length === 0) {
-      console.log('⚠️ No se pudo verificar, buscando razón...');
-      
-      // Verificar por qué falló
-      const usuario = await pool.query(
-        'SELECT esta_verificado, expira_token_verificacion FROM usuarios WHERE token_verificacion = $1',
-        [token]
-      );
-
-      if (usuario.rows.length === 0) {
-        console.log('❌ Token no encontrado en BD');
-        return res.status(404).json({
-          error: 'TOKEN_INVALIDO',
-          mensaje: 'Token de verificación inválido'
-        });
-      }
-
-      if (usuario.rows[0].esta_verificado) {
-        console.log('✅ Usuario ya verificado');
-        return res.status(400).json({
-          error: 'YA_VERIFICADO',
-          mensaje: 'Este email ya está verificado'
-        });
-      }
-
-      console.log('⏰ Token expirado');
-      return res.status(410).json({
-        error: 'TOKEN_EXPIRADO',
-        mensaje: 'Token expirado. Solicita uno nuevo',
-        accion: 'REENVIAR_VERIFICACION'
-      });
-    }
-
-    console.log('✅ Email verificado exitosamente:', resultado.rows[0].email);
-    res.json({
-      mensaje: 'Email verificado exitosamente. Ya puedes iniciar sesión.',
-      email: resultado.rows[0].email
-    });
-
-  } catch (error) {
-    console.error('❌ Error en verificarEmail:', error);
-    res.status(500).json({
-      error: 'VERIFICACION_FALLO',
-      mensaje: 'Error al verificar email'
-    });
-  }
-};
-
 // Login
 export const iniciarSesion = async (req, res) => {
   try {
@@ -239,7 +157,7 @@ export const iniciarSesion = async (req, res) => {
     }
 
     const resultado = await pool.query(
-      'SELECT id, email, hash_contrasena, esta_verificado, nombre FROM usuarios WHERE email = $1',
+      'SELECT id, email, hash_contrasena, nombre, avatar_url, proveedor_auth FROM usuarios WHERE email = $1',
       [email.toLowerCase()]
     );
 
@@ -252,20 +170,20 @@ export const iniciarSesion = async (req, res) => {
 
     const usuario = resultado.rows[0];
 
+    // Verificar que sea usuario local (no OAuth)
+    if (usuario.proveedor_auth !== 'local') {
+      return res.status(400).json({
+        error: 'METODO_AUTH_INCORRECTO',
+        mensaje: `Esta cuenta usa autenticación con ${usuario.proveedor_auth}. Por favor inicia sesión con ${usuario.proveedor_auth}.`
+      });
+    }
+
     const contrasenaValida = await bcrypt.compare(contrasena, usuario.hash_contrasena);
 
     if (!contrasenaValida) {
       return res.status(401).json({
         error: 'CREDENCIALES_INVALIDAS',
         mensaje: 'Email o contraseña incorrectos'
-      });
-    }
-
-    if (!usuario.esta_verificado) {
-      return res.status(403).json({
-        error: 'EMAIL_NO_VERIFICADO',
-        mensaje: 'Debes verificar tu email antes de iniciar sesión',
-        accion: 'REENVIAR_VERIFICACION'
       });
     }
 
@@ -282,7 +200,9 @@ export const iniciarSesion = async (req, res) => {
       usuario: {
         id: usuario.id,
         email: usuario.email,
-        nombre: usuario.nombre
+        nombre: usuario.nombre,
+        avatarUrl: usuario.avatar_url,
+        proveedorAuth: usuario.proveedor_auth
       }
     });
 
@@ -295,80 +215,11 @@ export const iniciarSesion = async (req, res) => {
   }
 };
 
-// Reenviar email de verificación
-export const reenviarVerificacion = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({
-        error: 'EMAIL_REQUERIDO',
-        mensaje: 'Email es requerido'
-      });
-    }
-
-    const resultado = await pool.query(
-      'SELECT id, esta_verificado, expira_token_verificacion FROM usuarios WHERE email = $1',
-      [email.toLowerCase()]
-    );
-
-    if (resultado.rows.length === 0) {
-      // No revelar si el email existe
-      return res.status(200).json({
-        mensaje: 'Si el email existe, recibirás un nuevo enlace de verificación'
-      });
-    }
-
-    const usuario = resultado.rows[0];
-
-    if (usuario.esta_verificado) {
-      return res.status(400).json({
-        error: 'YA_VERIFICADO',
-        mensaje: 'Este email ya está verificado'
-      });
-    }
-
-    // Rate limiting: no más de 1 email cada 5 minutos
-    const ultimoEnviado = usuario.expira_token_verificacion;
-    if (ultimoEnviado) {
-      const cincoMinutosAtras = new Date(Date.now() - 5 * 60 * 1000);
-      const tokenCreado = new Date(ultimoEnviado.getTime() - 24 * 60 * 60 * 1000);
-
-      if (tokenCreado > cincoMinutosAtras) {
-        return res.status(429).json({
-          error: 'DEMASIADAS_SOLICITUDES',
-          mensaje: 'Espera 5 minutos antes de solicitar otro email'
-        });
-      }
-    }
-
-    // Generar nuevo token
-    const nuevoToken = crypto.randomBytes(32).toString('hex');
-    const expiraEn = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-    await pool.query(
-      'UPDATE usuarios SET token_verificacion = $1, expira_token_verificacion = $2 WHERE id = $3',
-      [nuevoToken, expiraEn, usuario.id]
-    );
-
-    await enviarEmailVerificacion(email, nuevoToken);
-
-    res.json({ mensaje: 'Email de verificación enviado' });
-
-  } catch (error) {
-    console.error('Error en reenviarVerificacion:', error);
-    res.status(500).json({
-      error: 'REENVIO_FALLO',
-      mensaje: 'Error al reenviar email'
-    });
-  }
-};
-
 // Obtener usuario actual
 export const obtenerUsuarioActual = async (req, res) => {
   try {
     const resultado = await pool.query(
-      'SELECT id, email, nombre, creado_en FROM usuarios WHERE id = $1',
+      'SELECT id, email, nombre, avatar_url, proveedor_auth, creado_en FROM usuarios WHERE id = $1',
       [req.usuario.id]
     );
 
@@ -379,7 +230,18 @@ export const obtenerUsuarioActual = async (req, res) => {
       });
     }
 
-    res.json({ usuario: resultado.rows[0] });
+    const usuario = resultado.rows[0];
+
+    res.json({ 
+      usuario: {
+        id: usuario.id,
+        email: usuario.email,
+        nombre: usuario.nombre,
+        avatarUrl: usuario.avatar_url,
+        proveedorAuth: usuario.proveedor_auth,
+        creadoEn: usuario.creado_en
+      }
+    });
 
   } catch (error) {
     console.error('Error en obtenerUsuarioActual:', error);

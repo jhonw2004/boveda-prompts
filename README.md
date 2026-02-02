@@ -1,21 +1,27 @@
 # 🔐 Bóveda de Prompts
 
-Sistema de gestión de prompts para IA con autenticación de usuarios, verificación por email y papelera de recuperación.
+Sistema de gestión de prompts para IA con autenticación OAuth 2.0, gestión avanzada y papelera de recuperación.
 
 ## ✨ Características
 
 ### Core
-- ✅ Registro de usuarios con validación
-- ✅ Verificación de email
-- ✅ Autenticación JWT
-- ✅ Gestión de prompts (CRUD)
-- ✅ Categorización y etiquetado
-- ✅ Exportación de prompts (JSON, Markdown, TXT)
+- ✅ **Autenticación con Google OAuth 2.0**: Login rápido y seguro
+- ✅ **Autenticación local**: Registro tradicional con email/contraseña
+- ✅ **JWT**: Tokens seguros para sesiones
+- ✅ **Gestión de prompts (CRUD)**: Crea, edita, elimina y organiza
+- ✅ **Categorización y etiquetado**: Organiza tus prompts
+- ✅ **Exportación**: JSON, Markdown, TXT
 
-### Nuevas (v2.0)
-- 🎨 **UI mejorada estilo Notion**: Diseño limpio y moderno
+### v3.0 (OAuth 2.0)
+- 🔐 **Google OAuth 2.0**: Inicia sesión con tu cuenta de Google
+- 👤 **Foto de perfil**: Avatar automático desde Google
+- ⚡ **Sin verificación de email**: Login instantáneo con OAuth
+- 🔄 **Migración automática**: Vincula cuentas locales con Google
+
+### v2.0
+- 🎨 **UI estilo Notion**: Diseño limpio y moderno
 - 🗑️ **Sistema de papelera**: Recupera prompts eliminados
-- 📱 **Totalmente responsivo**: Optimizado para móvil, tablet y desktop
+- 📱 **Totalmente responsivo**: Móvil, tablet y desktop
 - ⌨️ **Atajos de teclado**: Cmd+S para guardar, Cmd+K para metadatos
 - 🎭 **Animaciones suaves**: Transiciones fluidas
 - 👁️ **Tres vistas**: Lista, Tabla y Galería
@@ -28,22 +34,23 @@ Sistema de gestión de prompts para IA con autenticación de usuarios, verificac
 - React Router
 - Tailwind CSS v4
 - Axios
+- @react-oauth/google
 - Lucide Icons
 - React Hot Toast
 
 ### Backend
 - Node.js + Express
 - PostgreSQL
+- Passport.js + Google OAuth 2.0
 - JWT
 - Bcrypt
-- Nodemailer
 
 ## 📦 Requisitos Previos
 
 - Node.js (v18 o superior)
-- PostgreSQL (v14 o superior)
+- PostgreSQL (v14 o superior) o Neon
 - npm o yarn
-- Cuenta de Gmail (para envío de emails)
+- Cuenta de Google Cloud (para OAuth)
 
 ## 🚀 Instalación
 
@@ -68,6 +75,8 @@ npm install
 
 ### 3. Configurar la base de datos
 
+#### Opción A: PostgreSQL local
+
 ```bash
 # Crear base de datos
 psql -U postgres
@@ -78,37 +87,50 @@ CREATE DATABASE boveda_prompts;
 psql -U postgres -d boveda_prompts -f base-datos/schema.sql
 ```
 
-**O usa el script automatizado:**
+#### Opción B: Neon (recomendado para producción)
 
-```bash
-cd servidor
-npm run migrar
-```
+1. Crea una base de datos en [Neon](https://neon.tech)
+2. Copia la connection string
+3. En el SQL Editor de Neon, pega el contenido de `base-datos/schema.sql`
+4. Ejecuta
 
-### 4. Configurar variables de entorno
+### 4. Configurar Google OAuth 2.0
+
+**Sigue la guía completa:** [CONFIGURAR_OAUTH.md](CONFIGURAR_OAUTH.md)
+
+**Resumen rápido:**
+
+1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
+2. Crea un proyecto
+3. Configura OAuth Consent Screen
+4. Crea credenciales OAuth 2.0
+5. Agrega Authorized JavaScript origins:
+   - `http://localhost:5173`
+   - `https://tu-frontend.onrender.com`
+6. Agrega Authorized redirect URIs:
+   - `http://localhost:5000/api/oauth/google/callback`
+   - `https://tu-backend.onrender.com/api/oauth/google/callback`
+7. Copia Client ID y Client Secret
+
+### 5. Configurar variables de entorno
 
 **Backend** (`servidor/.env`):
 ```env
-PUERTO=5000
+# Servidor
+PORT=5000
 NODE_ENV=development
 
-# Base de datos
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=boveda_prompts
-DB_USER=tu_usuario
-DB_PASSWORD=tu_contraseña
+# Base de datos (Neon o PostgreSQL local)
+DATABASE_URL=postgresql://usuario:password@host:5432/boveda_prompts
 
 # JWT
-JWT_SECRET=tu-secret-key-super-segura
+JWT_SECRET=tu-secret-key-super-segura-cambiar-en-produccion
 JWT_EXPIRE=7d
 
-# Email
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=tu-email@gmail.com
-EMAIL_PASSWORD=tu-app-password-de-gmail
-EMAIL_FROM=Bóveda de Prompts <noreply@bovedaprompts.com>
+# Google OAuth 2.0
+GOOGLE_CLIENT_ID=tu-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-tu-client-secret
+GOOGLE_CALLBACK_URL=http://localhost:5000/api/oauth/google/callback
 
 # Frontend
 FRONTEND_URL=http://localhost:5173
@@ -117,17 +139,8 @@ FRONTEND_URL=http://localhost:5173
 **Frontend** (`cliente/.env`):
 ```env
 VITE_API_URL=http://localhost:5000/api
+VITE_GOOGLE_CLIENT_ID=tu-client-id.apps.googleusercontent.com
 ```
-
-### 5. Configurar Gmail
-
-Para usar Gmail como servidor SMTP:
-
-1. Ve a [Google Account](https://myaccount.google.com/)
-2. Seguridad → Verificación en 2 pasos (activar)
-3. Seguridad → Contraseñas de aplicaciones
-4. Genera una contraseña de aplicación
-5. Copia la contraseña en `EMAIL_PASSWORD`
 
 ## 🎯 Uso
 
@@ -145,13 +158,6 @@ npm run dev
 
 - Backend: http://localhost:5000
 - Frontend: http://localhost:5173
-
-### Verificar Sistema
-
-```bash
-cd servidor
-npm run verificar
-```
 
 ### Producción
 
@@ -180,82 +186,46 @@ boveda-prompts/
 │   │   ├── paginas/          # Páginas
 │   │   ├── servicios/        # Servicios API
 │   │   └── hooks/            # Custom hooks
-│   ├── tailwind.config.js    # Configuración Tailwind
 │   └── package.json
 │
 ├── servidor/                  # Backend (Node.js/Express)
 │   ├── src/
-│   │   ├── config/           # Configuración
-│   │   ├── controladores/    # Controladores
-│   │   ├── middleware/       # Middleware
+│   │   ├── config/           # Configuración (DB, Passport)
+│   │   ├── controladores/    # Controladores (Auth, OAuth, Prompts)
+│   │   ├── middleware/       # Middleware (Auth)
 │   │   ├── rutas/            # Rutas API
-│   │   └── servicios/        # Servicios
-│   ├── migrar.js             # Script de migración
-│   ├── verificar.js          # Script de verificación
+│   │   └── utilidades/       # Utilidades
 │   └── package.json
 │
 ├── base-datos/               # Scripts SQL
-│   └── schema.sql           # Schema completo de la BD
+│   ├── schema.sql           # Schema completo (con OAuth)
+│   └── migraciones/         # Migraciones incrementales
+│       └── 003_agregar_oauth.sql
 │
-├── INICIO_RAPIDO.md          # Guía de inicio rápido
-├── ACTUALIZACION.md          # Guía de actualización
-├── MEJORAS_IMPLEMENTADAS.md  # Lista de mejoras
-└── CHECKLIST.md              # Checklist de verificación
-```
-│   │   └── servicios/        # Servicios API
-│   ├── tailwind.config.js    # Configuración Tailwind
-│   └── package.json
-│
-├── servidor/                  # Backend (Node.js/Express)
-│   ├── src/
-│   │   ├── config/           # Configuración
-│   │   ├── controladores/    # Controladores
-│   │   ├── middleware/       # Middleware
-│   │   ├── rutas/            # Rutas API
-│   │   └── servicios/        # Servicios
-│   ├── migrar.js             # Script de migración
-│   ├── verificar.js          # Script de verificación
-│   └── package.json
-│
-├── base-datos/               # Scripts SQL
-│   └── migraciones/
-│       ├── 001_schema_inicial.sql
-│       └── 002_agregar_papelera.sql
-│
-├── INICIO_RAPIDO.md          # Guía de inicio rápido
-├── ACTUALIZACION.md          # Guía de actualización
-├── MEJORAS_IMPLEMENTADAS.md  # Lista de mejoras
-└── CHECKLIST.md              # Checklist de verificación
+├── CONFIGURAR_OAUTH.md       # Guía de configuración OAuth
+└── README.md                 # Este archivo
 ```
 
-## 🎨 Nuevas Funcionalidades (v2.0)
+## 🔐 Autenticación
 
-### Sistema de Papelera
-- **Eliminación suave**: Los prompts se mueven a la papelera
-- **Restauración**: Recupera prompts eliminados
-- **Eliminación permanente**: Opción para eliminar definitivamente
-- **Vaciar papelera**: Limpia toda la papelera de una vez
+### OAuth 2.0 con Google (Recomendado)
 
-### Atajos de Teclado
-- `Cmd/Ctrl + S`: Guardar prompt
-- `Cmd/Ctrl + K`: Mostrar/ocultar metadatos
-- `Esc`: Cerrar modales
+- Login con un clic
+- Sin necesidad de verificación de email
+- Foto de perfil automática
+- Más seguro
 
-### Vistas de Biblioteca
-- **Lista**: Vista compacta con información básica
-- **Tabla**: Vista detallada con columnas
-- **Galería**: Vista de tarjetas con preview
+### Autenticación Local
 
-### Mejoras de UI
-- Diseño responsivo optimizado
-- Animaciones suaves
-- Sidebar colapsable
-- Indicadores de estado
-- Feedback visual mejorado
+- Registro con email/contraseña
+- Contraseña hasheada con bcrypt
+- Auto-verificado (sin emails)
+- Compatible con OAuth (puedes vincular después)
 
 ## 🔒 Seguridad
 
-- Contraseñas hasheadas con bcrypt
+- OAuth 2.0 con Google
+- Contraseñas hasheadas con bcrypt (auth local)
 - Tokens JWT con expiración
 - Validación de entrada en frontend y backend
 - CORS configurado
@@ -263,42 +233,102 @@ boveda-prompts/
 - Rate limiting
 - SQL injection prevention
 - XSS protection
+- Trust proxy para Render
+
+## 🚀 Deploy en Render
+
+### Backend (Web Service)
+
+1. Conecta tu repositorio de GitHub
+2. Root Directory: `servidor`
+3. Build Command: `npm install`
+4. Start Command: `npm start`
+5. Variables de entorno:
+   ```
+   NODE_ENV=production
+   PORT=5000
+   DATABASE_URL=tu-url-de-neon
+   JWT_SECRET=tu-secret
+   JWT_EXPIRE=7d
+   GOOGLE_CLIENT_ID=tu-client-id
+   GOOGLE_CLIENT_SECRET=tu-secret
+   GOOGLE_CALLBACK_URL=https://tu-backend.onrender.com/api/oauth/google/callback
+   FRONTEND_URL=https://tu-frontend.onrender.com
+   ```
+
+### Frontend (Static Site)
+
+1. Conecta tu repositorio de GitHub
+2. Root Directory: `cliente`
+3. Build Command: `npm install && npm run build`
+4. Publish Directory: `dist`
+5. Variables de entorno:
+   ```
+   VITE_API_URL=https://tu-backend.onrender.com/api
+   VITE_GOOGLE_CLIENT_ID=tu-client-id
+   ```
 
 ## 📚 Documentación
 
-- [Inicio Rápido](INICIO_RAPIDO.md) - Guía de 3 pasos
-- [Actualización](ACTUALIZACION.md) - Guía detallada de migración
-- [Mejoras Implementadas](MEJORAS_IMPLEMENTADAS.md) - Lista completa de cambios
-- [Checklist](CHECKLIST.md) - Verificación paso a paso
+- [Configurar OAuth 2.0](CONFIGURAR_OAUTH.md) - Guía completa de Google OAuth
+- [Schema SQL](base-datos/schema.sql) - Estructura de la base de datos
+- [Migración OAuth](base-datos/migraciones/003_agregar_oauth.sql) - Para actualizar BD existentes
+
+## 🎨 Funcionalidades
+
+### Sistema de Papelera
+- Eliminación suave (soft delete)
+- Restauración de prompts
+- Eliminación permanente
+- Vaciar papelera completa
+
+### Atajos de Teclado
+- `Cmd/Ctrl + S`: Guardar prompt
+- `Cmd/Ctrl + K`: Mostrar/ocultar metadatos
+- `Esc`: Cerrar modales
+
+### Vistas de Biblioteca
+- **Lista**: Vista compacta
+- **Tabla**: Vista detallada con columnas
+- **Galería**: Vista de tarjetas con preview
+
+### Exportación
+- JSON (estructura completa)
+- Markdown (formato legible)
+- TXT (texto plano)
 
 ## 🐛 Solución de Problemas
 
-### Error de migración
-```bash
-cd servidor
-npm run verificar
-```
+### OAuth no funciona
 
-### Estilos no se aplican
-```bash
-cd cliente
-rm -rf node_modules .vite
-npm install
-npm run dev
-```
+1. Verifica que las URLs en Google Console coincidan exactamente
+2. Revisa que `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` sean correctos
+3. Verifica que `GOOGLE_CALLBACK_URL` apunte al backend
+4. Revisa los logs del backend
 
 ### Base de datos no conecta
-Verifica las variables de entorno en `servidor/.env`
 
-## 🚀 Próximas Mejoras
+1. Verifica `DATABASE_URL` en las variables de entorno
+2. Para Neon, asegúrate de incluir `?sslmode=require`
+3. Revisa que ejecutaste el schema.sql
 
+### Error 404 en producción
+
+1. Verifica que `FRONTEND_URL` en el backend apunte al frontend
+2. Verifica que `VITE_API_URL` en el frontend apunte al backend
+3. Asegúrate de que ambos servicios estén desplegados
+
+## 🚀 Roadmap
+
+- [ ] GitHub OAuth
 - [ ] Sistema de versiones de prompts
 - [ ] Compartir prompts entre usuarios
-- [ ] Exportación avanzada (PDF)
+- [ ] Exportación a PDF
 - [ ] Plantillas de prompts
 - [ ] Colaboración en tiempo real
-- [ ] Integración con APIs de IA
+- [ ] Integración con APIs de IA (OpenAI, Claude)
 - [ ] PWA support
+- [ ] Modo offline
 
 ## 👤 Autor
 
@@ -311,13 +341,13 @@ Este proyecto es de código abierto y está disponible bajo la licencia MIT.
 
 ## 🙏 Agradecimientos
 
-Inspiración de diseño:
-- Notion (UI/UX patterns)
-- Linear (Animaciones)
-- Obsidian (Color palette)
+- Google OAuth 2.0 por la autenticación segura
+- Neon por el hosting de PostgreSQL
+- Render por el hosting gratuito
+- Notion, Linear y Obsidian por la inspiración de diseño
 
 ---
 
 ⭐ Si este proyecto te fue útil, considera darle una estrella en GitHub
 
-**Versión**: 2.0.0 | **Última actualización**: Febrero 2026
+**Versión**: 3.0.0 (OAuth 2.0) | **Última actualización**: Febrero 2026
