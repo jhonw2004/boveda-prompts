@@ -6,7 +6,7 @@ import { ProveedorAutenticacion, useAutenticacion } from './contexto/Autenticaci
 import Inicio from './paginas/Inicio';
 import IniciarSesion from './paginas/IniciarSesion';
 import Registrarse from './paginas/Registrarse';
-import VerificarEmail from './paginas/VerificarEmail';
+import AuthCallback from './paginas/AuthCallback';
 import Dashboard from './paginas/Dashboard';
 import Prompts from './paginas/Prompts';
 
@@ -72,7 +72,7 @@ function App() {
                 </RutaPublica>
               }
             />
-            <Route path="/verificar-email" element={<VerificarEmail />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* Rutas protegidas */}
             <Route
